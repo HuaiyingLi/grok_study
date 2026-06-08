@@ -723,7 +723,7 @@ def train(hparams: Namespace) -> None:
         # "checkpoint_callback": checkpointer,
         "logger": logger,
         "log_every_n_steps": 1,
-        "flush_logs_every_n_steps": 1000,
+        # "flush_logs_every_n_steps": 1000,
     }
     if torch.cuda.is_available() and hparams.gpu >= 0:
         trainer_args["gpus"] = [hparams.gpu]
@@ -803,7 +803,7 @@ def compute_sharpness(hparams: Namespace, ckpts) -> None:
         # "checkpoint_callback": checkpointer,
         "logger": logger,
         "log_every_n_steps": 1,
-        "flush_logs_every_n_steps": 1000,
+        # "flush_logs_every_n_steps": 1000,
     }
     if torch.cuda.is_available() and hparams.gpu >= 0:
         trainer_args["gpus"] = [hparams.gpu]
