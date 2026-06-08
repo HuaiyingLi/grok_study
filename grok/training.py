@@ -450,10 +450,9 @@ class TrainableTransformer(LightningModule):
         )
         self.fwd_time_in_epoch += time.time() - start
 
-        schedulers = self.trainer.lr_schedulers[0]
         if self.current_epoch != self.next_train_epoch_to_log:
             return {"loss": loss}
-        lr = schedulers["scheduler"].optimizer.param_groups[0]["lr"]
+        lr = self.optimizers().param_groups[0]["lr"]
         output = {
             "loss": loss,
             "partial_train_loss": coeff * loss,
