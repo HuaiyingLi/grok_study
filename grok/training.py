@@ -528,6 +528,8 @@ class TrainableTransformer(LightningModule):
         :returns: a dict with val_loss, val_accuracy, probabilities of solutions,
                   attentions, and values
         """
+        if getattr(self.trainer, "sanity_checking", False):
+            return {}
         if self.next_epoch_to_eval < self.current_epoch:
             self.next_epoch_to_eval = self.current_epoch
         if self.current_epoch != self.next_epoch_to_eval:
@@ -557,7 +559,8 @@ class TrainableTransformer(LightningModule):
         :param batch_idx: which batch this is in the epoch.
         :returns: a dict with val_loss, val_accuracy
         """
-        validation_is_real =len(outputs) > 0 and len(outputs[0]) != 0
+        outputs = [output for output in outputs if output]
+        validation_is_real = len(outputs) > 0
 
         if validation_is_real:
             self.next_epoch_to_eval = max(
