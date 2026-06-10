@@ -1,5 +1,6 @@
 defaults:
   - db: a
+  - user: x
   - _self_
 
 
