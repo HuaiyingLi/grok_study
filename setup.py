@@ -13,5 +13,7 @@ setup(
         "scipy",
         "mod",
         "matplotlib",
+        "hydra-core",
+        "hydra-submitit-launcher"
     ],
 )

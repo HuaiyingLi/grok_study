@@ -1,4 +1,11 @@
-db:
-  driver: mysql
-  user: omry
-  pass: secret
+defaults:
+  - db: a
+  - self_
+
+
+hydra:
+  mode: MULTIRUN
+  sweeper: 
+    params:
+      db: a,b
+      user: x,y
