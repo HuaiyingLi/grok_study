@@ -1,0 +1,1 @@
+math_operator: "(x._value//y)if(y._value%2==1)else(x-y)_mod_97"
