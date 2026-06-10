@@ -1,0 +1,12 @@
+defaults:
+  - db: a
+  - user: x
+  - _self_
+
+
+hydra:
+  mode: MULTIRUN
+  sweeper: 
+    params:
+      db: a,b
+      user: x,y
