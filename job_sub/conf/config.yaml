@@ -89,6 +89,7 @@ hydra:
     mem_per_cpu: 16GB
     additional_parameters:
       nodelist: xnode104
+      gres: gpu:1
     submitit_folder: slurm_logs
 
 
