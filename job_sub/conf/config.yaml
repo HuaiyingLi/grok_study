@@ -1,8 +1,8 @@
 defaults:
   - math_operator: addition
-  - override hydra/launcher: submitit_slurm
   - _self_
   - seed_mode: array
+  - override hydra/launcher: submitit_slurm
 
 # training defaults from TrainableTransformer.add_model_specific_args
 batchsize: 0
