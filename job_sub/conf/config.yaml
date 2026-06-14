@@ -1,8 +1,8 @@
 defaults:
   - math_operator: addition
+  - override hydra/launcher: submitit_slurm
   - _self_
   - seed_mode: array
-  - override hydra/launcher: submitit_slurm
 
 # training defaults from TrainableTransformer.add_model_specific_args
 batchsize: 0
@@ -86,10 +86,8 @@ hydra:
     partition: wangzitong
     cpus_per_task: 1
     qos: gpu-limit
+    gres: gpu:1
     mem_per_cpu: 16GB
     additional_parameters:
       nodelist: xnode104
-      gres: gpu:1
     submitit_folder: slurm_logs
-
-
