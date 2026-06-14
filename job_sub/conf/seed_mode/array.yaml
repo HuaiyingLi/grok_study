@@ -1,0 +1,11 @@
+# @package _global_
+seeds_as_jobs: true
+al_settings:
+  output_dir: ${hydra:runtime.output_dir}
+
+hydra:
+  sweep:
+    subdir: ${hydra.job.override_dirname}/seed_${al_settings.seed}
+  sweeper:
+    params:
+      al_settings.seed: range(${seed_start},${num_seeds_per_job})

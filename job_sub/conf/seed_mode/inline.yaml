@@ -1,0 +1,3 @@
+# @package _global_
+seeds_as_jobs: false
+logdir: ${al_settings.output_dir}
