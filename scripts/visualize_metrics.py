@@ -8,6 +8,7 @@ import subprocess
 from argparse import ArgumentParser
 from copy import deepcopy
 from glob import glob
+from pathlib import Path
 from pprint import pprint
 
 import blobfile as bf
@@ -46,14 +47,14 @@ else:
 
 
 def load_expt_metrics(
-    expt_dir,
+    logger_dir,
     args,
 ):
     """load the metrics for one experiment"""
     args = deepcopy(args)
 
     # load the hparams for this experiment
-    with open(f"{expt_dir}/default/version_0/hparams.yaml", "r") as fh:
+    with open(f"{logger_dir}/hparams.yaml", "r") as fh:
         hparams_dict = yaml.safe_load(fh)
 
     for k, v in hparams_dict.items():
@@ -74,7 +75,7 @@ def load_expt_metrics(
         "learning_rate": [],
     }
 
-    with open(f"{expt_dir}/default/version_0/metrics.csv", "r") as fh:
+    with open(f"{logger_dir}/metrics.csv", "r") as fh:
         for row in csv.DictReader(fh):
             if row["train_loss"] != "":
                 for k in train_data:
@@ -106,17 +107,47 @@ def load_run_metrics(
     """load all the metrics for a collection of experiments with the same architecture
     across various amounts of training data"""
     metric_data = {}
-    from os import walk
-
-    _, expt_dirs, _ = next(os.walk(run_dir))
-    for expt_dir in tqdm(expt_dirs, unit="expt"):
+    logger_dirs = find_logger_dirs(run_dir)
+    for logger_dir in tqdm(logger_dirs, unit="expt"):
         try:
-            expt_data = load_expt_metrics(f"{run_dir}/{expt_dir}", args)
-            train_data_pct = expt_data["hparams"]["train_data_pct"]
-            metric_data[train_data_pct] = expt_data
+            expt_data = load_expt_metrics(logger_dir, args)
+            label = make_expt_label(run_dir, logger_dir)
+            metric_data[label] = expt_data
         except FileNotFoundError:
             pass
     return metric_data
+
+
+def find_logger_dirs(run_dir):
+    """Find Lightning logger directories under a Hydra output tree."""
+    run_path = Path(run_dir)
+    metrics_files = sorted(run_path.glob("**/metrics.csv"))
+    logger_dirs = []
+    for metrics_file in metrics_files:
+        logger_dir = metrics_file.parent
+        if (logger_dir / "hparams.yaml").exists():
+            logger_dirs.append(str(logger_dir))
+    return logger_dirs
+
+
+def make_expt_label(run_dir, logger_dir):
+    """Use hydra folder plus seed folder as the plot label."""
+    run_path = Path(run_dir).resolve()
+    logger_path = Path(logger_dir).resolve()
+    try:
+        rel_parts = logger_path.relative_to(run_path).parts
+    except ValueError:
+        rel_parts = logger_path.parts
+
+    seed = next((part for part in rel_parts if part.startswith("seed_")), None)
+    if seed is not None:
+        seed_index = rel_parts.index(seed)
+        hydra_name = rel_parts[seed_index - 1] if seed_index > 0 else "run"
+        return f"{hydra_name}_{seed}"
+
+    ignored = {"lightning_logs"}
+    parts = [part for part in rel_parts if part not in ignored and not part.startswith("version_")]
+    return "_".join(parts) or logger_path.name
 
 
 def add_metric_graph(
@@ -149,10 +180,12 @@ def add_metric_graph(
     logger.debug(f"processing {metric}")
     plots = []
     T = list(sorted(metric_data.keys()))
-    T_max = int(T[-1])
-    T_min = int(T[0])
-    sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=T[0], vmax=T[-1]))
-    colors = sm.to_rgba(T)
+    color_values = np.arange(len(T))
+    sm = plt.cm.ScalarMappable(
+        cmap=cmap,
+        norm=plt.Normalize(vmin=0, vmax=max(len(T) - 1, 1)),
+    )
+    colors = sm.to_rgba(color_values)
     for i, t in enumerate(T):
         if "val" in metric:
             this_data = metric_data[t]["val"]
@@ -172,7 +205,7 @@ def add_metric_graph(
             logger.warning(f"No data for {metric}i at t={t}")
             continue
 
-        label = arch + f" t={t}"
+        label = str(t)
 
         if "accuracy" in metric:
             label += " (max = %.2f)" % max(Y)
@@ -180,14 +213,13 @@ def add_metric_graph(
             label += " (min = %.2f)" % min(Y)
         total_plots += 1
         ax.plot(X, Y, label=label, color=colors[i])
-    if T_max - T_min <= 10:
+    if len(T) <= 15:
         ax.legend()
     else:
         fig.colorbar(
             sm,
             ax=ax,
-            label="% training data",
-            ticks=range(T_min, T_max + 1, int((T_max - T_min) / 5)),
+            label="experiment index",
         )
 
 
@@ -201,21 +233,15 @@ def add_max_accuracy_graph(
     max_increment=0,
 ):
     ax.set_title(f"max {metric}")
-    ax.set_xlabel("% of total data trained on")
-    ax.xaxis.set_major_formatter(mtick.PercentFormatter())
-    xmin = 0
-    xmax = 100
+    ax.set_xlabel("experiment")
     ymin = 1e-16
     ymax = 101
-    ax.axis(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+    ax.axis(ymin=ymin, ymax=ymax)
     ax.set_xscale(scales["x"])
     ax.set_yscale(scales["y"])
     ax.yaxis.set_major_formatter(mtick.PercentFormatter())
-    ax.xaxis.set_major_formatter(mtick.PercentFormatter())
 
     T = list(sorted(metric_data.keys()))
-    T_max = int(T[-1])
-    T_min = int(T[0])
     Y = []
     for i, t in enumerate(T):
         if "val" in metric:
@@ -233,9 +259,11 @@ def add_max_accuracy_graph(
         except ValueError:
             Y.append(np.nan)
 
-    ax.set_xticks(np.arange(0, 100, 5))
+    X = np.arange(len(T))
+    ax.set_xticks(X)
+    ax.set_xticklabels(T, rotation=45, ha="right")
     label = f"max {metric} {arch}"
-    ax.plot(T, Y, label=label)
+    ax.plot(X, Y, label=label)
 
 
 def create_loss_curves(
@@ -461,6 +489,11 @@ rundir = args.input_dir
 
 try:
     metric_data = load_run_metrics(rundir, args)
+    if not metric_data:
+        raise FileNotFoundError(
+            f"No metrics.csv with hparams.yaml found under {rundir}. "
+            "Expected paths like seed_*/lightning_logs/version_*/metrics.csv."
+        )
     arch = get_arch(metric_data)
     operation = get_operation(metric_data)
     max_epochs = get_max_epochs(metric_data)
@@ -471,7 +504,7 @@ try:
     by = "epoch"
     last_i = -1
     for i in sorted(list(set(2 ** (np.arange(167) / 10)))):
-        if i > max_epochs:
+        if max_epochs is not None and i > max_epochs:
             break
         i = int(round(i))
         create_max_accuracy_curves(
