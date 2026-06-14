@@ -6,6 +6,10 @@ defaults:
 
 # training defaults from TrainableTransformer.add_model_specific_args
 batchsize: 0
+random_seed: ${al_settings.seed}
+gpu: 0
+max_epochs: null
+max_steps: 100000
 n_layers: 2
 n_heads: 4
 d_model: 128
@@ -62,6 +66,7 @@ al_settings:
 # hydra settings
 hydra:
   job:
+    chdir: false
     config:
       override_dirname:
         kv_sep: "="
