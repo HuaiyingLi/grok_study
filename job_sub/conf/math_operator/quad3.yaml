@@ -1,1 +1,2 @@
+# @package _global_
 math_operator: "x**2+y**2+x*y+x_mod_97"
