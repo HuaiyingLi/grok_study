@@ -81,6 +81,7 @@ hydra:
       math_operator: addition
       weight_noise: 0.0,0.1,0.2,0.3,0.5
       train_data_pct: 5,20,30
+      weight_decay: 0.1,0.2,0.3,0.5
     
   launcher:
     setup:
