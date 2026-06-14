@@ -41,7 +41,7 @@ datadir: data
 results_root_dir: /share/home/wangzitongLab/liuxuyin/grok_study/results
 
 # number of random seeds to run for each active learning experiment
-num_seeds_per_job: 30
+num_seeds_per_job: 3
 seed_start: 0
 parallelize_seeds: true
 
