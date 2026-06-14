@@ -11,6 +11,12 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+
+_SCRIPT_PATH = Path(__file__).resolve()
+_REPO_ROOT = _SCRIPT_PATH.parents[1]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
 import grok
 import hydra
 from hydra.core.hydra_config import HydraConfig
@@ -25,7 +31,6 @@ from job_sub.utils.slurm_utils import wait_for_slurm_jobs
 from job_sub.utils.sweep_utils import collect_user_overrides
 # from run_grok_with_hydra import run_one_grok_with_hydra
 
-_SCRIPT_PATH = Path(__file__).resolve()
 # _HYDRA_CHILD_ENV = "GENE_CIRCUIT_HYDRA_CHILD"
 # _DATASET_INDEX_ENV = "AL_DATASET_INDEX"
 # _DATASET_ENV = "AL_DATASET_NAME"
