@@ -78,6 +78,9 @@ hydra:
       train_data_pct: 5,20,30
     
   launcher:
+    setup:
+      - source ~/miniconda3/etc/profile.d/conda.sh
+      - conda activate grok
     timeout_min: 180
     # everything below is used only for submitting jobs to the cluster
     partition: intel-sc3,wzt_20250411 # no spacing between names
