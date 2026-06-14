@@ -10,6 +10,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import os
 import subprocess
 import sys
+from argparse import Namespace
 from pathlib import Path
 
 _SCRIPT_PATH = Path(__file__).resolve()
@@ -71,11 +72,19 @@ def run_one_job(cfg):
     if OmegaConf.select(cfg, "seeds_as_jobs", default=False):
         import grok
 
-        grok.training.train(cfg)
+        grok.training.train(_to_namespace(cfg))
     else:
         from job_sub.utils.seed_jobs import run_seed_jobs
 
         run_seed_jobs(cfg)
+
+
+def _to_namespace(cfg) -> Namespace:
+    """Convert Hydra config to argparse-compatible training namespace."""
+    data = OmegaConf.to_container(cfg, resolve=True)
+    if not isinstance(data, dict):
+        raise TypeError("Expected Hydra config to resolve to a mapping")
+    return Namespace(**data)
 
 
 # def main():
