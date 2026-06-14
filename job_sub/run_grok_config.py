@@ -17,7 +17,6 @@ _REPO_ROOT = _SCRIPT_PATH.parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-import grok
 import hydra
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import OmegaConf
@@ -26,7 +25,6 @@ from job_sub.utils.config_utils import (
     parse_override_value,
     # seed_env_from_datasets,
 )
-from job_sub.utils.seed_jobs import run_seed_jobs
 from job_sub.utils.slurm_utils import wait_for_slurm_jobs
 from job_sub.utils.sweep_utils import collect_user_overrides
 # from run_grok_with_hydra import run_one_grok_with_hydra
@@ -71,8 +69,12 @@ def run_one_job(cfg):
     _ensure_thread_env()
     print(OmegaConf.to_yaml(cfg.al_settings))
     if OmegaConf.select(cfg, "seeds_as_jobs", default=False):
+        import grok
+
         grok.training.train(cfg)
     else:
+        from job_sub.utils.seed_jobs import run_seed_jobs
+
         run_seed_jobs(cfg)
 
 
