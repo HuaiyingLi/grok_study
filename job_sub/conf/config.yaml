@@ -73,9 +73,9 @@ hydra:
     subdir: ${hydra.job.override_dirname}
   sweeper: # multirun mode sweeps over these parameters
     params:
-      math_operator: addition,division
-      dropout: 0.0,0.1
-      weight_noise: 0.0,0.1,0.2,0.3,0.4,0.5
+      math_operator: addition
+      weight_noise: 0.0,0.1,0.2,0.3,0.5
+      train_data_pct: 5,20,30
     
   launcher:
     timeout_min: 180
