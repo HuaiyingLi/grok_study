@@ -19,6 +19,7 @@ import numpy as np
 import torch
 import yaml
 from tqdm import tqdm
+import textwrap
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +113,7 @@ def load_run_metrics(
         try:
             expt_data = load_expt_metrics(logger_dir, args)
             label = make_expt_label(run_dir, logger_dir)
-            metric_data[label] = expt_data
+            metric_data[label] = expt_data #edited to let it use the label instead of only train_data_pct as the key
         except FileNotFoundError:
             pass
     return metric_data
@@ -150,21 +151,19 @@ def make_expt_label(run_dir, logger_dir):
     return "_".join(parts) or logger_path.name
 
 
-def add_metric_graph(
-    fig,
+def add_metric_subplot(
     ax,
-    arch,
+    setting_label,
+    setting_data,
     metric,
-    metric_data,
     scales,
-    cmap="viridis",
     by="step",  # step or epoch
     max_increment=0,
 ):
-    ax.set_title(metric)
     ax.set_xscale(scales["x"])
     ax.set_yscale(scales["y"])
     ax.set_xlabel(by)
+    ax.set_title("\n".join(textwrap.wrap(setting_label, width=42)))
 
     if "accuracy" in metric:
         ax.yaxis.set_major_formatter(mtick.PercentFormatter())
@@ -176,51 +175,35 @@ def add_metric_graph(
         ymax = 15
         ax.axis(ymin=ymin, ymax=ymax)
 
-    total_plots = 0
     logger.debug(f"processing {metric}")
-    plots = []
-    T = list(sorted(metric_data.keys()))
-    color_values = np.arange(len(T))
-    sm = plt.cm.ScalarMappable(
-        cmap=cmap,
-        norm=plt.Normalize(vmin=0, vmax=max(len(T) - 1, 1)),
-    )
-    colors = sm.to_rgba(color_values)
-    for i, t in enumerate(T):
-        if "val" in metric:
-            this_data = metric_data[t]["val"]
-        else:
-            this_data = metric_data[t]["train"]
-
-        X = this_data[by]
-        Y = this_data[metric]
-        if max_increment > 0:
-            X = [x for x in X if x <= max_increment]
-            Y = Y[: len(X)]
-
-        if len(X) != len(Y):
-            logger.warning(f"Mismatched data: {metric} at t={t}")
-            continue
-        if not Y:
-            logger.warning(f"No data for {metric}i at t={t}")
-            continue
-
-        label = str(t)
-
-        if "accuracy" in metric:
-            label += " (max = %.2f)" % max(Y)
-        elif "loss" in metric:
-            label += " (min = %.2f)" % min(Y)
-        total_plots += 1
-        ax.plot(X, Y, label=label, color=colors[i])
-    if len(T) <= 15:
-        ax.legend()
+    if "val" in metric:
+        this_data = setting_data["val"]
     else:
-        fig.colorbar(
-            sm,
-            ax=ax,
-            label="experiment index",
+        this_data = setting_data["train"]
+
+    X = this_data[by]
+    Y = this_data[metric]
+    if max_increment > 0:
+        X = [x for x in X if x <= max_increment]
+        Y = Y[: len(X)]
+
+    if len(X) != len(Y):
+        logger.warning(
+            f"Mismatched data: {metric} at setting {setting_label} has "
+            f"{len(X)} {by}s but {len(Y)} metric values"
         )
+        return
+    if not Y:
+        logger.warning(f"No data for {metric} at setting {setting_label}")
+        return
+
+    label = metric
+    if "accuracy" in metric:
+        label += " (max = %.2f)" % max(Y)
+    elif "loss" in metric:
+        label += " (min = %.2f)" % min(Y)
+    ax.plot(X, Y, label=label)
+    ax.legend()
 
 
 # def add_max_accuracy_graph(
@@ -281,80 +264,59 @@ def create_loss_curves(
         "x": "log",
         "y": "linear",
     }
-
-    ncols = 2
-    nrows = 3
-    fig_width = ncols * 8
-    fig_height = nrows * 5
-    fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(fig_width, fig_height))
-
-    add_metric_graph(
-        fig,
-        axs[0, 0],
-        arch,
+    metrics = [
         "val_loss",
-        metric_data,
-        scales,
-        cmap,
-        by,
-        max_increment=max_increment,
-    )
-    add_metric_graph(
-        fig,
-        axs[0, 1],
-        arch,
         "val_accuracy",
-        metric_data,
-        scales,
-        cmap,
-        by,
-        max_increment=max_increment,
-    )
-    add_metric_graph(
-        fig,
-        axs[1, 0],
-        arch,
         "train_loss",
-        metric_data,
-        scales,
-        cmap,
-        by,
-        max_increment=max_increment,
-    )
-    add_metric_graph(
-        fig,
-        axs[1, 1],
-        arch,
         "train_accuracy",
-        metric_data,
-        scales,
-        cmap,
-        by,
-        max_increment=max_increment,
-    )
-    add_metric_graph(
-        fig,
-        axs[2, 0],
-        arch,
         "learning_rate",
-        metric_data,
-        scales,
-        cmap,
-        by,
-        max_increment=max_increment,
-    )
-    fig.suptitle(f"{operation} {arch} {max_increment:06d} {by}s")
-    fig.tight_layout()
+    ]
+    settings = list(sorted(metric_data.items()))
+    if not settings:
+        logger.warning("No settings found for loss curve plotting")
+        return
 
-    img_file = f"{image_dir}/loss_curves/{operation}_loss_curves_{arch}__upto_{max_increment:010d}_{by}"
-    if most_interesting_only:
-        img_file += "_most_interesting"
-    img_file += ".png"
-    d = os.path.split(img_file)[0]
-    os.makedirs(d, exist_ok=True)
-    print(f"Writing {img_file}")
-    fig.savefig(img_file)
-    plt.close(fig)
+    ncols = min(3, len(settings))
+    nrows = int(np.ceil(len(settings) / ncols))
+    fig_width = ncols * 7
+    fig_height = nrows * 4.5
+
+    for metric in metrics:
+        fig, axs = plt.subplots(
+            nrows=nrows,
+            ncols=ncols,
+            figsize=(fig_width, fig_height),
+            squeeze=False,
+        )
+        flat_axes = axs.flatten()
+        for ax, (setting_label, setting_data) in zip(flat_axes, settings):
+            add_metric_subplot(
+                ax,
+                setting_label,
+                setting_data,
+                metric,
+                scales,
+                by=by,
+                max_increment=max_increment,
+            )
+        for ax in flat_axes[len(settings) :]:
+            ax.axis("off")
+
+        fig.suptitle(f"{operation} {metric} {arch} {max_increment:06d} {by}s")
+        fig.tight_layout()
+
+        img_file = (
+            f"{image_dir}/loss_curves/{operation}_{metric}_{arch}"
+            f"__upto_{max_increment:010d}_{by}"
+        )
+        if most_interesting_only:
+            img_file += "_most_interesting"
+        img_file += ".png"
+        d = os.path.split(img_file)[0]
+        os.makedirs(d, exist_ok=True)
+        print(f"Writing {img_file}")
+        fig.savefig(img_file)
+        plt.close(fig)
 
 
 def create_max_accuracy_curves(
