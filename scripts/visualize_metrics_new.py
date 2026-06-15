@@ -67,6 +67,7 @@ def load_expt_metrics(
         "epoch": [],
         "val_loss": [],
         "val_accuracy": [],
+        "full_train_acc": [],
     }
     train_data = {
         "step": [],
@@ -87,6 +88,8 @@ def load_expt_metrics(
                     train_data[k].append(v)
             else:
                 for k in val_data:
+                    if k not in row or row[k] == "":
+                        continue
                     if k in ["step", "epoch"]:
                         v = int(row[k])
                     else:
@@ -176,7 +179,7 @@ def add_metric_subplot(
         ymax = 15
         ax.axis(ymin=ymin, ymax=ymax)
 
-    for split, metric, color in metric_specs:
+    for split, metric, color, label_name in metric_specs:
         logger.debug(f"processing {metric}")
         this_data = setting_data[split]
         X = this_data[by]
@@ -195,7 +198,7 @@ def add_metric_subplot(
             logger.warning(f"No data for {metric} at setting {setting_label}")
             continue
 
-        label = split
+        label = label_name
         if "accuracy" in metric:
             label += " (max = %.2f)" % max(Y)
         elif "loss" in metric:
@@ -264,15 +267,15 @@ def create_loss_curves(
     }
     metric_groups = {
         "loss": [
-            ("val", "val_loss", "tab:blue"),
-            ("train", "train_loss", "tab:orange"),
+            ("val", "val_loss", "tab:blue", "val"),
+            ("train", "train_loss", "tab:orange", "train"),
         ],
         "accuracy": [
-            ("val", "val_accuracy", "tab:blue"),
-            ("train", "train_accuracy", "tab:orange"),
+            ("val", "val_accuracy", "tab:blue", "val"),
+            ("val", "full_train_acc", "tab:orange", "full train"),
         ],
         "learning_rate": [
-            ("train", "learning_rate", "tab:green"),
+            ("train", "learning_rate", "tab:green", "train"),
         ],
     }
     settings = list(sorted(metric_data.items()))
