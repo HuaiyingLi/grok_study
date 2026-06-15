@@ -74,10 +74,9 @@ class ArithmeticTokenizer:
     def __init__(self, data_dir=DEFAULT_DATA_DIR) -> None:
         self.token_file = bf.join(data_dir, self.token_file)
 
-        self.itos = self.get_tokens()
+        self.itos = self.get_tokens()# get all kinds of tokens
 
-        self.stoi: Dict[str, int] = dict([(s, i) for i, s in enumerate(self.itos)])
-
+        self.stoi: Dict[str, int] = dict([(s, i) for i, s in enumerate(self.itos)])# enumerate give the id as keys, so the stoi built a dict with token as keys and id as values
     def _encode(self, s: str) -> Tensor:
         return LongTensor([self.stoi[t] for t in s.split(" ")])
 
@@ -261,13 +260,13 @@ class ArithmeticDataset:
     @staticmethod
     def _make_unary_operation_data(operator: str, operands: Tensor) -> List[str]:
         """
-        :param operator: The unary operator to apply to each operand e.g. '+'
+        :param operator: The unary operator to apply to each operand e.g. 'sort'
         :param operands: A tensor of operands
         :returns: list of equations"""
         num_examples = len(operands)
 
         if operator == "sort":
-            rhs = torch.sort(operands, dim=1)[0]
+            rhs = torch.sort(operands, dim=1)[0]#only return the sorted values, not the indices
         elif operator == "reverse":
             rhs = torch.flip(operands, dims=(1,))
         elif operator == "copy":
