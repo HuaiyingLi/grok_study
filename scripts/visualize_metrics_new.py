@@ -155,7 +155,8 @@ def add_metric_subplot(
     ax,
     setting_label,
     setting_data,
-    metric,
+    metric_group,
+    metric_specs,
     scales,
     by="step",  # step or epoch
     max_increment=0,
@@ -165,44 +166,41 @@ def add_metric_subplot(
     ax.set_xlabel(by)
     ax.set_title("\n".join(textwrap.wrap(setting_label, width=42)))
 
-    if "accuracy" in metric:
+    if "accuracy" in metric_group:
         ax.yaxis.set_major_formatter(mtick.PercentFormatter())
         ymin = 1e-16
         ymax = 101
         ax.axis(ymin=ymin, ymax=ymax)
-    if "loss" in metric:
+    if "loss" in metric_group:
         ymin = 1e-16
         ymax = 15
         ax.axis(ymin=ymin, ymax=ymax)
 
-    logger.debug(f"processing {metric}")
-    if "val" in metric:
-        this_data = setting_data["val"]
-    else:
-        this_data = setting_data["train"]
+    for split, metric, color in metric_specs:
+        logger.debug(f"processing {metric}")
+        this_data = setting_data[split]
+        X = this_data[by]
+        Y = this_data[metric]
+        if max_increment > 0:
+            X = [x for x in X if x <= max_increment]
+            Y = Y[: len(X)]
 
-    X = this_data[by]
-    Y = this_data[metric]
-    if max_increment > 0:
-        X = [x for x in X if x <= max_increment]
-        Y = Y[: len(X)]
+        if len(X) != len(Y):
+            logger.warning(
+                f"Mismatched data: {metric} at setting {setting_label} has "
+                f"{len(X)} {by}s but {len(Y)} metric values"
+            )
+            continue
+        if not Y:
+            logger.warning(f"No data for {metric} at setting {setting_label}")
+            continue
 
-    if len(X) != len(Y):
-        logger.warning(
-            f"Mismatched data: {metric} at setting {setting_label} has "
-            f"{len(X)} {by}s but {len(Y)} metric values"
-        )
-        return
-    if not Y:
-        logger.warning(f"No data for {metric} at setting {setting_label}")
-        return
-
-    label = metric
-    if "accuracy" in metric:
-        label += " (max = %.2f)" % max(Y)
-    elif "loss" in metric:
-        label += " (min = %.2f)" % min(Y)
-    ax.plot(X, Y, label=label)
+        label = split
+        if "accuracy" in metric:
+            label += " (max = %.2f)" % max(Y)
+        elif "loss" in metric:
+            label += " (min = %.2f)" % min(Y)
+        ax.plot(X, Y, label=label, color=color)
     ax.legend()
 
 
@@ -264,13 +262,19 @@ def create_loss_curves(
         "x": "log",
         "y": "linear",
     }
-    metrics = [
-        "val_loss",
-        "val_accuracy",
-        "train_loss",
-        "train_accuracy",
-        "learning_rate",
-    ]
+    metric_groups = {
+        "loss": [
+            ("val", "val_loss", "tab:blue"),
+            ("train", "train_loss", "tab:orange"),
+        ],
+        "accuracy": [
+            ("val", "val_accuracy", "tab:blue"),
+            ("train", "train_accuracy", "tab:orange"),
+        ],
+        "learning_rate": [
+            ("train", "learning_rate", "tab:green"),
+        ],
+    }
     settings = list(sorted(metric_data.items()))
     if not settings:
         logger.warning("No settings found for loss curve plotting")
@@ -281,7 +285,7 @@ def create_loss_curves(
     fig_width = ncols * 7
     fig_height = nrows * 4.5
 
-    for metric in metrics:
+    for metric_group, metric_specs in metric_groups.items():
         fig, axs = plt.subplots(
             nrows=nrows,
             ncols=ncols,
@@ -294,7 +298,8 @@ def create_loss_curves(
                 ax,
                 setting_label,
                 setting_data,
-                metric,
+                metric_group,
+                metric_specs,
                 scales,
                 by=by,
                 max_increment=max_increment,
@@ -302,11 +307,11 @@ def create_loss_curves(
         for ax in flat_axes[len(settings) :]:
             ax.axis("off")
 
-        fig.suptitle(f"{operation} {metric} {arch} {max_increment:06d} {by}s")
+        fig.suptitle(f"{operation} {metric_group} {arch} {max_increment:06d} {by}s")
         fig.tight_layout()
 
         img_file = (
-            f"{image_dir}/loss_curves/{operation}_{metric}_{arch}"
+            f"{image_dir}/loss_curves/{operation}_{metric_group}_{arch}"
             f"__upto_{max_increment:010d}_{by}"
         )
         if most_interesting_only:
