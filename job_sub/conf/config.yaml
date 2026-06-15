@@ -78,9 +78,9 @@ hydra:
     subdir: ${hydra.job.override_dirname}
   sweeper: # multirun mode sweeps over these parameters
     params:
-      math_operator: addition
-      train_data_pct: 5,20,30,50
-      weight_decay: 0.02,0.1,0.2,0.3,0.5,1.0
+      math_operator: addition,copy,cub1,cub2,cubepoly,division,even_addition_odd_multiplication,even_addtion_odd_subtraction,mix1,multiplication,quad1,quad2,quad3,reverse,s5,s5aba,s5conj,sort,squarepoly,subtraction
+      train_data_pct: 30
+      weight_decay: 1.0
     
   launcher:
     setup:
