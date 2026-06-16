@@ -204,7 +204,7 @@ class ArithmeticDataset:
         elif operator in ["s5conj", "s5aba"]:
             operands = operands or list(range(5))
             elems = map(Permutation, itertools.permutations(operands))
-            tuples = itertools.product(elems, repeat=2)
+            tuples = itertools.product(elems, repeat=2) #generates all ordered pairs from the same list.
         elif "_mod_" in operator:
             modulo = int(operator.split("_mod_")[-1])
             elems = [Mod(i, modulo) for i in range(modulo)]
