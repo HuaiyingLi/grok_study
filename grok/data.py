@@ -339,6 +339,15 @@ class ArithmeticDataset:
         if operator not in ["sort", "reverse", "copy"]:
             data = cls._make_binary_operation_data(operator)
         else:
+            if operands is None:
+                raise ValueError(
+                    f"operand_length must be set for unary operator '{operator}'"
+                )
+            if isinstance(operands, int):
+                operands = torch.tensor(
+                    list(itertools.product(NUMS, repeat=operands)),
+                    dtype=torch.long,
+                )
             data = cls._make_unary_operation_data(operator, operands)
 
         rng = np.random.RandomState(seed=seed)

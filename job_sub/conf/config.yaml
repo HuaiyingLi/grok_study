@@ -79,6 +79,7 @@ hydra:
   sweeper: # multirun mode sweeps over these parameters
     params:
       math_operator: reverse,sort,copy
+      operand_length: 2
       train_data_pct: 30
       weight_decay: 1.0
     
